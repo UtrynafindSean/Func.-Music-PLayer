@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>TONEARM — Music Player</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside class="sidebar">
+
+      <div class="brand">
+        <span class="brand-mark">●</span>
+        TONEARM
+      </div>
+
+      <nav class="main-nav">
+
+        <button class="nav-btn active" data-view="home">
+          ◈
+          <span>Home</span>
+        </button>
+
+        <button class="nav-btn" data-view="search">
+          ⌕
+          <span>Search</span>
+        </button>
+
+        <button class="nav-btn" data-view="library">
+          ▤
+          <span>Library</span>
+        </button>
+
+      </nav>
+
+      <div class="side-label">PLAYLISTS</div>
+
+      <div id="playlistList" class="playlist-list"></div>
+
+      <div class="sidebar-bottom">
+
+        <button id="addFilesSide" class="add-side">
+          ＋ Add music
+        </button>
+
+        <input
+          id="fileInput"
+          type="file"
+          accept="audio/*"
+          multiple
+          hidden
+        >
+
+      </div>
+
+    </aside>
+
+
+    <!-- ================= MAIN ================= -->
+
+    <main class="main">
+
+      <header class="topbar">
+
+        <div class="mobile-brand">
+          <span class="brand-mark">●</span>
+          TONEARM
+        </div>
+
+        <div class="search-wrap">
+
+          <span>⌕</span>
+
+          <input
+            id="globalSearch"
+            type="search"
+            placeholder="What do you want to play?"
+          >
+
+        </div>
+
+        <button
+          id="themeBtn"
+          class="icon-btn"
+          title="Toggle appearance"
+        >
+          ◔
+        </button>
+
+        <button
+          id="profileBtn"
+          class="profile"
+          title="Profile"
+        >
+          M
+        </button>
+
+      </header>
+
+
+      <section id="content" class="content">
+        <!-- JavaScript renders the content -->
+      </section>
+
+
+      <!-- DROP AREA -->
+
+      <div id="dropOverlay" class="drop-overlay">
+
+        <div>
+
+          <strong>Drop music here</strong>
+
+          <span>
+            Audio files will be added to your library.
+          </span>
+
+        </div>
+
+      </div>
+
+    </main>
+
+
+    <!-- ================= NOW PLAYING ================= -->
+
+    <aside class="queue-panel">
+
+      <div class="queue-head">
+
+        <span>NOW PLAYING</span>
+
+        <button
+          id="clearQueue"
+          class="tiny-btn"
+        >
+          Clear
+        </button>
+
+      </div>
+
+
+      <div
+        id="nowPlayingArt"
+        class="now-art"
+      ></div>
+
+
+      <div
+        id="nowTitle"
+        class="now-title"
+      >
+        Nothing playing
+      </div>
+
+
+      <div
+        id="nowArtist"
+        class="now-artist"
+      >
+        Add music to begin
+      </div>
+
+
+      <div class="queue-label">
+        UP NEXT
+      </div>
+
+
+      <div
+        id="queueList"
+        class="queue-list"
+      ></div>
+
+    </aside>
+
+
+    <!-- ================= PLAYER ================= -->
+
+    <footer class="player">
+
+      <div class="track-mini">
+
+        <div
+          id="miniArt"
+          class="mini-art"
+        ></div>
+
+        <div class="mini-copy">
+
+          <strong id="miniTitle">
+            Nothing playing
+          </strong>
+
+          <span id="miniArtist">
+            —
+          </span>
+
+        </div>
+
+        <button
+          id="likeBtn"
+          class="heart"
+          title="Like"
+        >
+          ♡
+        </button>
+
+      </div>
+
+
+      <div class="controls">
+
+        <div class="control-row">
+
+          <button
+            id="shuffleBtn"
+            class="control-btn"
+            title="Shuffle"
+          >
+            ⤨
+          </button>
+
+
+          <button
+            id="prevBtn"
+            class="control-btn"
+            title="Previous"
+          >
+            |◀
+          </button>
+
+
+          <button
+            id="playBtn"
+            class="play-btn"
+            title="Play/Pause"
+          >
+            ▶
+          </button>
+
+
+          <button
+            id="nextBtn"
+            class="control-btn"
+            title="Next"
+          >
+            ▶|
+          </button>
+
+
+          <button
+            id="repeatBtn"
+            class="control-btn"
+            title="Repeat"
+          >
+            ↻
+          </button>
+
+        </div>
+
+
+        <div class="progress-row">
+
+          <span id="currentTime">
+            0:00
+          </span>
+
+          <input
+            id="progress"
+            type="range"
+            min="0"
+            max="100"
+            value="0"
+            step="0.1"
+          >
+
+          <span id="duration">
+            0:00
+          </span>
+
+        </div>
+
+      </div>
+
+
+      <!-- VOLUME -->
+
+      <div class="volume">
+
+        <button
+          id="muteBtn"
+          class="control-btn"
+          title="Mute"
+        >
+          🔊
+        </button>
+
+        <input
+          id="volumeSlider"
+          type="range"
+          min="0"
+          max="1"
+          value="0.8"
+          step="0.01"
+        >
+
+      </div>
+
+    </footer>
+
+  </div>
+
+
+  <!-- REAL HTML AUDIO ELEMENT -->
+
+  <audio id="audio"></audio>
+
+
+  <div id="toast" class="toast"></div>
+
+
+  <script src="script.js"></script>
+
+</body>
+</html>
