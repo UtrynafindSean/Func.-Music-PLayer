@@ -3,7 +3,7 @@
    Jamendo Online Music + Local Library
 ========================================= */
 
-const JAMENDO_CLIENT_ID = "709fa152";
+const JAMENDO_CLIENT_ID = "fd714c65";
 const JAMENDO_API = "https://api.jamendo.com/v3.0";
 
 /* =========================================
@@ -145,7 +145,10 @@ function addLocalFiles(files) {
   if (!files || files.length === 0) return;
 
   Array.from(files).forEach((file) => {
-    if (!file.type.startsWith("audio/") && !/\.(mp3|wav|m4a|aac|ogg|flac|webm)$/i.test(file.name)) {
+    if (
+      !file.type.startsWith("audio/") &&
+      !/\.(mp3|wav|m4a|aac|ogg|flac|webm)$/i.test(file.name)
+    ) {
       return;
     }
 
@@ -202,9 +205,7 @@ function renderLibrary(filter = "") {
   });
 
   trackCount.textContent =
-    library.length === 1
-      ? "1 track"
-      : `${library.length} tracks`;
+    library.length === 1 ? "1 track" : `${library.length} tracks`;
 
   emptyState.style.display = library.length === 0 ? "block" : "none";
 
@@ -238,9 +239,7 @@ async function loadJamendoMusic(searchTerm = "") {
       params.set("search", searchTerm.trim());
     }
 
-    const response = await fetch(
-      `${JAMENDO_API}/tracks/?${params.toString()}`
-    );
+    const response = await fetch(`${JAMENDO_API}/tracks/?${params.toString()}`);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -253,9 +252,7 @@ async function loadJamendoMusic(searchTerm = "") {
       data.headers.status &&
       data.headers.status !== "success"
     ) {
-      throw new Error(
-        data.headers.error_message || "Jamendo API error"
-      );
+      throw new Error(data.headers.error_message || "Jamendo API error");
     }
 
     onlineSongs = (data.results || []).map((track) => ({
@@ -374,7 +371,8 @@ function playSong(song, index) {
     playerArtwork.innerHTML = "<span>♫</span>";
   }
 
-  audio.play()
+  audio
+    .play()
     .then(() => {
       playBtn.textContent = "⏸";
     })
@@ -395,7 +393,8 @@ playBtn.addEventListener("click", () => {
   }
 
   if (audio.paused) {
-    audio.play()
+    audio
+      .play()
       .then(() => {
         playBtn.textContent = "⏸";
       })
@@ -428,9 +427,7 @@ function nextButton() {
     let nextIndex;
 
     if (isShuffle) {
-      nextIndex = Math.floor(
-        Math.random() * currentPlaylist.length
-      );
+      nextIndex = Math.floor(Math.random() * currentPlaylist.length);
     } else {
       nextIndex = currentIndex + 1;
 
@@ -500,8 +497,7 @@ audio.addEventListener("loadedmetadata", () => {
 audio.addEventListener("timeupdate", () => {
   if (!audio.duration) return;
 
-  const progress =
-    (audio.currentTime / audio.duration) * 100;
+  const progress = (audio.currentTime / audio.duration) * 100;
 
   progressBar.value = progress;
 
@@ -540,8 +536,7 @@ audio.addEventListener("error", () => {
 progressBar.addEventListener("input", () => {
   if (!audio.duration) return;
 
-  audio.currentTime =
-    (progressBar.value / 100) * audio.duration;
+  audio.currentTime = (progressBar.value / 100) * audio.duration;
 });
 
 /* =========================================
