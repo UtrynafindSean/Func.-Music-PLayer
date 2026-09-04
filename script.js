@@ -45,7 +45,7 @@ const onlineSearchInput = document.getElementById("onlineSearchInput");
 
 const onlineSearchBtn = document.getElementById("onlineSearchBtn");
 
-const onlineStatus = document.getElementById("onlineStatus");
+const onlineSearchStatus = document.getElementById("onlinestatus");
 
 const onlineResults = document.getElementById("onlineResults");
 
