@@ -253,19 +253,43 @@ function setupEventListeners() {
 // -------------------------
 
 function setupNavigation() {
-  const navItems = document.querySelectorAll("[data-page]");
+  const navItems = document.querySelectorAll(".nav-btn");
+  const libraryPage = document.getElementById("libraryPage");
+  const onlinePage = document.getElementById("onlinePage");
+  const pageTitle = document.getElementById("pageTitle");
 
-  navItems.forEach((item) => {
-    item.addEventListener("click", () => {
-      navItems.forEach((nav) => nav.classList.remove("active"));
+  navItems.forEach((button) => {
+    button.addEventListener("click", () => {
+      const page = button.dataset.page;
 
-      item.classList.add("active");
-
-      const page = item.dataset.page;
-
-      document.querySelectorAll("[data-section]").forEach((section) => {
-        section.hidden = section.dataset.section !== page;
+      // Remove active state from all buttons
+      navItems.forEach((item) => {
+        item.classList.remove("active");
       });
+
+      // Add active state to clicked button
+      button.classList.add("active");
+
+      // Show the correct page
+      if (page === "library") {
+        libraryPage.classList.add("active");
+        libraryPage.hidden = false;
+
+        onlinePage.classList.remove("active");
+        onlinePage.hidden = true;
+
+        pageTitle.textContent = "Your Library";
+      }
+
+      if (page === "online") {
+        libraryPage.classList.remove("active");
+        libraryPage.hidden = true;
+
+        onlinePage.classList.add("active");
+        onlinePage.hidden = false;
+
+        pageTitle.textContent = "Online Music";
+      }
     });
   });
 }
