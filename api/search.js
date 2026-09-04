@@ -5,7 +5,7 @@ module.exports = async function handler(req, res) {
 
     if (!term) {
       return res.status(400).json({
-        error: "Missing search term",
+        error: "Please enter a search term.",
       });
     }
 
@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(502).json({
-        error: "Apple Music search returned HTTP " + response.status,
+        error: `Music service returned ${response.status}.`,
       });
     }
 
@@ -32,11 +32,10 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json(data);
   } catch (error) {
-    console.error("TONEARM API ERROR:", error);
+    console.error("TONEARM SEARCH ERROR:", error);
 
     return res.status(500).json({
-      error: "Music search service failed",
-      details: error.message,
+      error: "Music search service is temporarily unavailable.",
     });
   }
 };

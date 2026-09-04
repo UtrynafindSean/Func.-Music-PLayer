@@ -11,7 +11,7 @@
 
   <body>
     <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar">
       <div class="brand">
         <div class="logo-mark">T</div>
         <span>TONEARM</span>
@@ -29,13 +29,10 @@
         </button>
       </nav>
 
-      <button class="add-music-side" id="addMusicBtn">
-        <span>＋</span>
-        Add music
-      </button>
+      <button class="add-music-side" id="addMusicBtn">＋ Add music</button>
     </aside>
 
-    <!-- MAIN CONTENT -->
+    <!-- MAIN -->
     <main class="main-content">
       <!-- TOP BAR -->
       <header class="topbar">
@@ -49,6 +46,7 @@
 
           <div class="library-search">
             <span>⌕</span>
+
             <input
               type="text"
               id="librarySearch"
@@ -62,9 +60,12 @@
       <section id="libraryPage" class="page active">
         <section class="hero">
           <div class="hero-content">
-            <span class="eyebrow">YOUR PERSONAL LIBRARY</span>
+            <span class="eyebrow"> YOUR PERSONAL LIBRARY </span>
 
-            <h2>Put your music<br />on the <span>arm.</span></h2>
+            <h2>
+              Put your music<br />
+              on the <span>arm.</span>
+            </h2>
 
             <p>Add your favorite tracks and build your own music collection.</p>
 
@@ -96,7 +97,7 @@
           />
         </section>
 
-        <!-- LIBRARY HEADER -->
+        <!-- TRACK HEADER -->
         <div class="section-heading">
           <div>
             <h2>Tracks</h2>
@@ -104,7 +105,7 @@
           </div>
         </div>
 
-        <!-- LIBRARY GRID -->
+        <!-- LIBRARY TRACKS -->
         <div class="track-grid" id="libraryTracks"></div>
 
         <!-- EMPTY STATE -->
@@ -118,15 +119,18 @@
       </section>
 
       <!-- ONLINE PAGE -->
-      <section id="onlinePage" class="page">
+      <section id="onlinePage" class="page" hidden>
         <div class="online-header">
           <div>
-            <span class="eyebrow">ONLINE MUSIC</span>
+            <span class="eyebrow"> ONLINE MUSIC </span>
+
             <h2>Find something to play.</h2>
+
             <p>Search for songs and listen to available previews.</p>
           </div>
         </div>
 
+        <!-- ONLINE SEARCH -->
         <div class="online-search">
           <span>⌕</span>
 
@@ -139,16 +143,18 @@
           <button id="onlineSearchBtn" class="primary-btn">Search</button>
         </div>
 
-        <div id="onlinestatus" class="online-status">
+        <!-- STATUS -->
+        <div id="onlineStatus" class="online-status">
           Search for music above.
         </div>
 
+        <!-- ONLINE RESULTS -->
         <div class="track-grid" id="onlineResults"></div>
       </section>
     </main>
 
     <!-- MUSIC PLAYER -->
-    <footer class="music-player" id="music-player">
+    <footer class="music-player">
       <div class="now-playing">
         <div class="player-artwork" id="playerArtwork">
           <span>♫</span>
@@ -175,11 +181,11 @@
         </div>
 
         <div class="progress-container">
-          <span id="currentTime">0:00</span>
+          <span id="currentTime"> 0:00 </span>
 
           <input type="range" id="progressBar" min="0" max="100" value="0" />
 
-          <span id="totalTime">0:00</span>
+          <span id="totalTime"> 0:00 </span>
         </div>
       </div>
 
@@ -197,7 +203,7 @@
       </div>
     </footer>
 
-    <!-- AUDIO ENGINE -->
+    <!-- AUDIO -->
     <audio id="audioPlayer" preload="metadata"></audio>
 
     <!-- TOAST -->
