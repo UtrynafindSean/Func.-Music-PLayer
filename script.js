@@ -1,18 +1,19 @@
-/* =========================================
+/* =========================================================
    TONEARM MUSIC PLAYER
-   Jamendo Online Music + Local Library
-========================================= */
+   Jamendo + Local Music + Offline Playback
+========================================================= */
 
 const JAMENDO_CLIENT_ID = "fd714c65";
 const JAMENDO_API = "https://api.jamendo.com/v3.0";
 
-/* =========================================
+/* =========================================================
    ELEMENTS
-========================================= */
+========================================================= */
 
 const audio = document.getElementById("audioPlayer");
 
 const navButtons = document.querySelectorAll(".nav-btn");
+
 const libraryPage = document.getElementById("libraryPage");
 const onlinePage = document.getElementById("onlinePage");
 const pageTitle = document.getElementById("pageTitle");
@@ -51,21 +52,23 @@ const volumeControl = document.getElementById("volumeControl");
 const themeBtn = document.getElementById("themeBtn");
 const toast = document.getElementById("toast");
 
-/* =========================================
+/* =========================================================
    STATE
-========================================= */
+========================================================= */
 
 let library = [];
 let onlineSongs = [];
+let offlineSongs = [];
+
 let currentPlaylist = [];
 let currentIndex = -1;
 
 let isShuffle = false;
 let isRepeat = false;
 
-/* =========================================
-   HELPERS
-========================================= */
+/* =========================================================
+   TOAST
+========================================================= */
 
 function showToast(message) {
   if (!toast) return;
@@ -78,24 +81,33 @@ function showToast(message) {
   }, 2500);
 }
 
-function formatTime(seconds) {
-  if (!Number.isFinite(seconds)) return "0:00";
+/* =========================================================
+   TIME FORMAT
+========================================================= */
 
-  const mins = Math.floor(seconds / 60);
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds)) {
+    return "0:00";
+  }
+
+  const minutes = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
 
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
 }
 
-/* =========================================
+/* =========================================================
    NAVIGATION
-========================================= */
+========================================================= */
 
 navButtons.forEach((button) => {
   button.addEventListener("click", () => {
     const page = button.dataset.page;
 
-    navButtons.forEach((btn) => btn.classList.remove("active"));
+    navButtons.forEach((btn) => {
+      btn.classList.remove("active");
+    });
+
     button.classList.add("active");
 
     if (page === "library") {
@@ -106,6 +118,8 @@ navButtons.forEach((button) => {
       onlinePage.classList.remove("active");
 
       pageTitle.textContent = "Your Library";
+
+      currentPlaylist = library;
     }
 
     if (page === "online") {
@@ -117,6 +131,8 @@ navButtons.forEach((button) => {
 
       pageTitle.textContent = "Online Music";
 
+      currentPlaylist = onlineSongs;
+
       if (onlineSongs.length === 0) {
         loadJamendoMusic();
       }
@@ -124,9 +140,9 @@ navButtons.forEach((button) => {
   });
 });
 
-/* =========================================
-   LOCAL MUSIC
-========================================= */
+/* =========================================================
+   LOCAL FILE PICKER
+========================================================= */
 
 function openFilePicker() {
   fileInput.click();
@@ -138,17 +154,27 @@ browseBtn.addEventListener("click", openFilePicker);
 
 fileInput.addEventListener("change", (event) => {
   addLocalFiles(event.target.files);
+
   fileInput.value = "";
 });
 
+/* =========================================================
+   ADD LOCAL FILES
+========================================================= */
+
 function addLocalFiles(files) {
-  if (!files || files.length === 0) return;
+  if (!files || files.length === 0) {
+    return;
+  }
+
+  let added = 0;
 
   Array.from(files).forEach((file) => {
-    if (
-      !file.type.startsWith("audio/") &&
-      !/\.(mp3|wav|m4a|aac|ogg|flac|webm)$/i.test(file.name)
-    ) {
+    const isAudio =
+      file.type.startsWith("audio/") ||
+      /\.(mp3|wav|m4a|aac|ogg|flac|webm)$/i.test(file.name);
+
+    if (!isAudio) {
       return;
     }
 
@@ -160,22 +186,27 @@ function addLocalFiles(files) {
       url: URL.createObjectURL(file),
       artwork: "",
       source: "local",
+      file: file,
     };
 
     library.push(song);
+    added++;
   });
 
   renderLibrary();
 
-  showToast(`${files.length} music file(s) added`);
+  if (added > 0) {
+    showToast(`${added} song${added > 1 ? "s" : ""} added`);
+  }
 }
 
-/* =========================================
-   DRAG & DROP
-========================================= */
+/* =========================================================
+   DRAG AND DROP
+========================================================= */
 
 dropZone.addEventListener("dragover", (event) => {
   event.preventDefault();
+
   dropZone.classList.add("dragging");
 });
 
@@ -191,14 +222,14 @@ dropZone.addEventListener("drop", (event) => {
   addLocalFiles(event.dataTransfer.files);
 });
 
-/* =========================================
-   LIBRARY RENDER
-========================================= */
+/* =========================================================
+   LIBRARY
+========================================================= */
 
 function renderLibrary(filter = "") {
   libraryTracks.innerHTML = "";
 
-  const filtered = library.filter((song) => {
+  const filteredSongs = library.filter((song) => {
     const text = `${song.title} ${song.artist} ${song.album}`.toLowerCase();
 
     return text.includes(filter.toLowerCase());
@@ -209,15 +240,16 @@ function renderLibrary(filter = "") {
 
   emptyState.style.display = library.length === 0 ? "block" : "none";
 
-  filtered.forEach((song, index) => {
+  filteredSongs.forEach((song, index) => {
     const card = createTrackCard(song, index, "library");
+
     libraryTracks.appendChild(card);
   });
 }
 
-/* =========================================
-   ONLINE MUSIC - JAMENDO
-========================================= */
+/* =========================================================
+   JAMENDO SEARCH
+========================================================= */
 
 async function loadJamendoMusic(searchTerm = "") {
   onlineStatus.textContent = searchTerm
@@ -242,7 +274,7 @@ async function loadJamendoMusic(searchTerm = "") {
     const response = await fetch(`${JAMENDO_API}/tracks/?${params.toString()}`);
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error(`Jamendo HTTP ${response.status}`);
     }
 
     const data = await response.json();
@@ -256,19 +288,31 @@ async function loadJamendoMusic(searchTerm = "") {
     }
 
     onlineSongs = (data.results || []).map((track) => ({
-      id: track.id,
+      id: `jamendo-${track.id}`,
+      jamendoId: track.id,
+
       title: track.name || "Unknown Track",
+
       artist: track.artist_name || "Unknown Artist",
+
       album: track.album_name || "Jamendo",
+
       url: track.audio || "",
+
       downloadUrl: track.audiodownload || "",
+
       downloadAllowed: track.audiodownload_allowed === true,
+
       artwork: track.album_image || track.image || "",
+
       source: "jamendo",
     }));
 
+    currentPlaylist = onlineSongs;
+
     if (onlineSongs.length === 0) {
       onlineStatus.textContent = "No music found.";
+
       return;
     }
 
@@ -279,24 +323,29 @@ async function loadJamendoMusic(searchTerm = "") {
     console.error("Jamendo error:", error);
 
     onlineStatus.textContent =
-      "Couldn't connect to Jamendo. Make sure you are running the site through Live Server.";
+      "Couldn't connect to Jamendo. Run the website with Live Server.";
 
     showToast("Couldn't connect to Jamendo");
   }
 }
+
+/* =========================================================
+   ONLINE RESULTS
+========================================================= */
 
 function renderOnlineResults() {
   onlineResults.innerHTML = "";
 
   onlineSongs.forEach((song, index) => {
     const card = createTrackCard(song, index, "online");
+
     onlineResults.appendChild(card);
   });
 }
 
-/* =========================================
+/* =========================================================
    TRACK CARD
-========================================= */
+========================================================= */
 
 function createTrackCard(song, index, type) {
   const card = document.createElement("div");
@@ -306,6 +355,18 @@ function createTrackCard(song, index, type) {
   const artwork = song.artwork
     ? `<img src="${song.artwork}" alt="${escapeHTML(song.title)}">`
     : `<div class="track-placeholder">♫</div>`;
+
+  let downloadButton = "";
+
+  if (type === "online" && song.downloadAllowed && song.downloadUrl) {
+    downloadButton = `
+      <button
+        class="download-track-btn"
+        title="Download for offline playback">
+        ↓
+      </button>
+    `;
+  }
 
   card.innerHTML = `
     <div class="track-artwork">
@@ -318,15 +379,15 @@ function createTrackCard(song, index, type) {
     </div>
 
     <div class="track-actions">
-      <button class="play-track-btn" title="Play">
+
+      <button
+        class="play-track-btn"
+        title="Play">
         ▶
       </button>
 
-      ${
-        type === "online" && song.downloadAllowed && song.downloadUrl
-          ? `<button class="download-track-btn" title="Download">↓</button>`
-          : ""
-      }
+      ${downloadButton}
+
     </div>
   `;
 
@@ -334,23 +395,24 @@ function createTrackCard(song, index, type) {
 
   playButton.addEventListener("click", () => {
     currentPlaylist = type === "online" ? onlineSongs : library;
+
     playSong(song, index);
   });
 
-  const downloadButton = card.querySelector(".download-track-btn");
+  const downloadButtonElement = card.querySelector(".download-track-btn");
 
-  if (downloadButton) {
-    downloadButton.addEventListener("click", () => {
-      downloadSong(song);
+  if (downloadButtonElement) {
+    downloadButtonElement.addEventListener("click", () => {
+      saveForOffline(song);
     });
   }
 
   return card;
 }
 
-/* =========================================
+/* =========================================================
    PLAY SONG
-========================================= */
+========================================================= */
 
 function playSong(song, index) {
   if (!song.url) {
@@ -362,11 +424,16 @@ function playSong(song, index) {
 
   audio.src = song.url;
 
-  playerTitle.textContent = song.title;
-  playerArtist.textContent = song.artist;
+  playerTitle.textContent = song.title || "Unknown Track";
+
+  playerArtist.textContent = song.artist || "Unknown Artist";
 
   if (song.artwork) {
-    playerArtwork.innerHTML = `<img src="${song.artwork}" alt="">`;
+    playerArtwork.innerHTML = `
+      <img
+        src="${song.artwork}"
+        alt="${escapeHTML(song.title)}">
+    `;
   } else {
     playerArtwork.innerHTML = "<span>♫</span>";
   }
@@ -378,13 +445,14 @@ function playSong(song, index) {
     })
     .catch((error) => {
       console.error("Playback error:", error);
-      showToast("Unable to play this track");
+
+      showToast("Unable to play this track.");
     });
 }
 
-/* =========================================
+/* =========================================================
    PLAY / PAUSE
-========================================= */
+========================================================= */
 
 playBtn.addEventListener("click", () => {
   if (!audio.src) {
@@ -399,50 +467,47 @@ playBtn.addEventListener("click", () => {
         playBtn.textContent = "⏸";
       })
       .catch(() => {
-        showToast("Unable to play track");
+        showToast("Unable to play track.");
       });
   } else {
     audio.pause();
+
     playBtn.textContent = "▶️";
   }
 });
 
-/* =========================================
+/* =========================================================
    NEXT
-========================================= */
+========================================================= */
 
-nextButtonHandler();
+nextBtn.addEventListener("click", () => {
+  if (currentPlaylist.length === 0) {
+    showToast("No tracks available.");
+    return;
+  }
 
-function nextButtonHandler() {
-  nextButton();
-}
+  let nextIndex;
 
-function nextButton() {
-  nextBtn.addEventListener("click", () => {
-    if (currentPlaylist.length === 0) {
-      showToast("No tracks available.");
-      return;
+  if (isShuffle) {
+    nextIndex = Math.floor(Math.random() * currentPlaylist.length);
+
+    if (currentPlaylist.length > 1 && nextIndex === currentIndex) {
+      nextIndex = (nextIndex + 1) % currentPlaylist.length;
     }
+  } else {
+    nextIndex = currentIndex + 1;
 
-    let nextIndex;
-
-    if (isShuffle) {
-      nextIndex = Math.floor(Math.random() * currentPlaylist.length);
-    } else {
-      nextIndex = currentIndex + 1;
-
-      if (nextIndex >= currentPlaylist.length) {
-        nextIndex = 0;
-      }
+    if (nextIndex >= currentPlaylist.length) {
+      nextIndex = 0;
     }
+  }
 
-    playSong(currentPlaylist[nextIndex], nextIndex);
-  });
-}
+  playSong(currentPlaylist[nextIndex], nextIndex);
+});
 
-/* =========================================
+/* =========================================================
    PREVIOUS
-========================================= */
+========================================================= */
 
 previousBtn.addEventListener("click", () => {
   if (currentPlaylist.length === 0) {
@@ -459,9 +524,9 @@ previousBtn.addEventListener("click", () => {
   playSong(currentPlaylist[previousIndex], previousIndex);
 });
 
-/* =========================================
+/* =========================================================
    SHUFFLE
-========================================= */
+========================================================= */
 
 shuffleBtn.addEventListener("click", () => {
   isShuffle = !isShuffle;
@@ -471,9 +536,9 @@ shuffleBtn.addEventListener("click", () => {
   showToast(isShuffle ? "Shuffle on" : "Shuffle off");
 });
 
-/* =========================================
+/* =========================================================
    REPEAT
-========================================= */
+========================================================= */
 
 repeatBtn.addEventListener("click", () => {
   isRepeat = !isRepeat;
@@ -485,21 +550,22 @@ repeatBtn.addEventListener("click", () => {
   showToast(isRepeat ? "Repeat on" : "Repeat off");
 });
 
-/* =========================================
+/* =========================================================
    AUDIO EVENTS
-========================================= */
+========================================================= */
 
 audio.addEventListener("loadedmetadata", () => {
   totalTime.textContent = formatTime(audio.duration);
+
   progressBar.value = 0;
 });
 
 audio.addEventListener("timeupdate", () => {
   if (!audio.duration) return;
 
-  const progress = (audio.currentTime / audio.duration) * 100;
+  const percentage = (audio.currentTime / audio.duration) * 100;
 
-  progressBar.value = progress;
+  progressBar.value = percentage;
 
   currentTime.textContent = formatTime(audio.currentTime);
 });
@@ -513,25 +579,32 @@ audio.addEventListener("pause", () => {
 });
 
 audio.addEventListener("ended", () => {
-  if (!isRepeat && currentPlaylist.length > 0) {
-    let nextIndex = currentIndex + 1;
-
-    if (nextIndex >= currentPlaylist.length) {
-      nextIndex = 0;
-    }
-
-    playSong(currentPlaylist[nextIndex], nextIndex);
+  if (isRepeat) {
+    return;
   }
+
+  if (currentPlaylist.length === 0) {
+    return;
+  }
+
+  let nextIndex = currentIndex + 1;
+
+  if (nextIndex >= currentPlaylist.length) {
+    nextIndex = 0;
+  }
+
+  playSong(currentPlaylist[nextIndex], nextIndex);
 });
 
 audio.addEventListener("error", () => {
-  console.error("Audio playback error:", audio.error);
+  console.error("Audio error:", audio.error);
+
   showToast("This track could not be played.");
 });
 
-/* =========================================
+/* =========================================================
    PROGRESS BAR
-========================================= */
+========================================================= */
 
 progressBar.addEventListener("input", () => {
   if (!audio.duration) return;
@@ -539,9 +612,9 @@ progressBar.addEventListener("input", () => {
   audio.currentTime = (progressBar.value / 100) * audio.duration;
 });
 
-/* =========================================
+/* =========================================================
    VOLUME
-========================================= */
+========================================================= */
 
 audio.volume = 1;
 
@@ -549,46 +622,19 @@ volumeControl.addEventListener("input", () => {
   audio.volume = Number(volumeControl.value);
 });
 
-/* =========================================
-   DOWNLOAD
-========================================= */
-
-function downloadSong(song) {
-  if (!song.downloadAllowed || !song.downloadUrl) {
-    showToast("Download is not available for this track.");
-    return;
-  }
-
-  const link = document.createElement("a");
-
-  link.href = song.downloadUrl;
-  link.target = "_blank";
-  link.rel = "noopener noreferrer";
-
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-
-  showToast("Download started");
-}
-
-/* =========================================
-   LIBRARY SEARCH
-========================================= */
-
-librarySearch.addEventListener("input", () => {
-  renderLibrary(librarySearch.value);
-});
-
-/* =========================================
-   ONLINE SEARCH
-========================================= */
+/* =========================================================
+   ONLINE SEARCH BUTTON
+========================================================= */
 
 onlineSearchBtn.addEventListener("click", () => {
   const query = onlineSearchInput.value.trim();
 
   loadJamendoMusic(query);
 });
+
+/* =========================================================
+   ONLINE SEARCH ENTER KEY
+========================================================= */
 
 onlineSearchInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -600,25 +646,273 @@ onlineSearchInput.addEventListener("keydown", (event) => {
   }
 });
 
-/* =========================================
+/* =========================================================
+   LIBRARY SEARCH
+========================================================= */
+
+librarySearch.addEventListener("input", () => {
+  renderLibrary(librarySearch.value);
+});
+
+/* =========================================================
+   INDEXEDDB OFFLINE STORAGE
+========================================================= */
+
+let db;
+
+const DB_NAME = "TonearmMusicDB";
+const DB_VERSION = 1;
+const STORE_NAME = "offlineSongs";
+
+/* =========================================================
+   OPEN DATABASE
+========================================================= */
+
+function openDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const database = event.target.result;
+
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, {
+          keyPath: "id",
+        });
+      }
+    };
+
+    request.onsuccess = () => {
+      db = request.result;
+
+      resolve(db);
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+}
+
+/* =========================================================
+   SAVE SONG FOR OFFLINE
+========================================================= */
+
+async function saveForOffline(song) {
+  if (!song.downloadAllowed || !song.downloadUrl) {
+    showToast("Download is not available for this track.");
+
+    return;
+  }
+
+  try {
+    showToast("Downloading song...");
+
+    const response = await fetch(song.downloadUrl);
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const blob = await response.blob();
+
+    const offlineSong = {
+      id: song.id,
+
+      title: song.title,
+
+      artist: song.artist,
+
+      album: song.album,
+
+      artwork: song.artwork,
+
+      blob: blob,
+
+      savedAt: Date.now(),
+    };
+
+    await saveOfflineSong(offlineSong);
+
+    await loadOfflineSongs();
+
+    showToast(`"${song.title}" saved for offline playback`);
+  } catch (error) {
+    console.error("Offline download error:", error);
+
+    /*
+      Fallback:
+      If browser CORS prevents fetching
+      the file, open Jamendo's download URL.
+    */
+
+    const link = document.createElement("a");
+
+    link.href = song.downloadUrl;
+
+    link.target = "_blank";
+
+    link.rel = "noopener noreferrer";
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    showToast("Download opened in a new tab");
+  }
+}
+
+/* =========================================================
+   SAVE TO INDEXEDDB
+========================================================= */
+
+function saveOfflineSong(song) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error("Database not ready"));
+
+      return;
+    }
+
+    const transaction = db.transaction([STORE_NAME], "readwrite");
+
+    const store = transaction.objectStore(STORE_NAME);
+
+    const request = store.put(song);
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+}
+
+/* =========================================================
+   LOAD OFFLINE SONGS
+========================================================= */
+
+function loadOfflineSongs() {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      resolve([]);
+
+      return;
+    }
+
+    const transaction = db.transaction([STORE_NAME], "readonly");
+
+    const store = transaction.objectStore(STORE_NAME);
+
+    const request = store.getAll();
+
+    request.onsuccess = () => {
+      offlineSongs = request.result || [];
+
+      /*
+          Convert blobs into playable URLs
+        */
+
+      offlineSongs = offlineSongs.map((song) => ({
+        ...song,
+
+        url: URL.createObjectURL(song.blob),
+
+        source: "offline",
+      }));
+
+      /*
+          Add offline songs to library
+        */
+
+      offlineSongs.forEach((offlineSong) => {
+        const exists = library.some((song) => song.id === offlineSong.id);
+
+        if (!exists) {
+          library.push(offlineSong);
+        }
+      });
+
+      renderLibrary();
+
+      resolve(offlineSongs);
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+}
+
+/* =========================================================
+   OFFLINE DATABASE INITIALIZATION
+========================================================= */
+
+async function initializeOfflineStorage() {
+  try {
+    await openDatabase();
+
+    await loadOfflineSongs();
+
+    console.log("Offline music storage ready.");
+  } catch (error) {
+    console.error("Offline storage error:", error);
+
+    showToast("Offline storage unavailable.");
+  }
+}
+
+/* =========================================================
+   DELETE OFFLINE SONG
+========================================================= */
+
+function deleteOfflineSong(id) {
+  return new Promise((resolve, reject) => {
+    if (!db) {
+      reject(new Error("Database not ready"));
+
+      return;
+    }
+
+    const transaction = db.transaction([STORE_NAME], "readwrite");
+
+    const store = transaction.objectStore(STORE_NAME);
+
+    const request = store.delete(id);
+
+    request.onsuccess = () => {
+      resolve();
+    };
+
+    request.onerror = () => {
+      reject(request.error);
+    };
+  });
+}
+
+/* =========================================================
    THEME
-========================================= */
+========================================================= */
 
 themeBtn.addEventListener("click", () => {
   document.body.classList.toggle("dark");
 
-  const isDark = document.body.classList.contains("dark");
+  const darkMode = document.body.classList.contains("dark");
 
-  localStorage.setItem("tonearm-theme", isDark ? "dark" : "light");
+  localStorage.setItem("tonearm-theme", darkMode ? "dark" : "light");
 });
 
 if (localStorage.getItem("tonearm-theme") === "dark") {
   document.body.classList.add("dark");
 }
 
-/* =========================================
+/* =========================================================
    HTML ESCAPE
-========================================= */
+========================================================= */
 
 function escapeHTML(value) {
   return String(value)
@@ -629,10 +923,12 @@ function escapeHTML(value) {
     .replace(/'/g, "&#039;");
 }
 
-/* =========================================
-   INITIAL STATE
-========================================= */
+/* =========================================================
+   INITIALIZE
+========================================================= */
 
 renderLibrary();
+
+initializeOfflineStorage();
 
 console.log("TONEARM Music Player loaded successfully.");
