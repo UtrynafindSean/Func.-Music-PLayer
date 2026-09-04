@@ -1,634 +1,447 @@
 /* =========================================================
-   TONEARM — JAMENDO DEVELOPER API
+   TONEARM MUSIC PLAYER
+   JAMENDO DEVELOPER API INTEGRATION
+   ========================================================= */
+
+
+/* =========================================================
+   JAMENDO CONFIG
    ========================================================= */
 
 const JAMENDO_CLIENT_ID = "709fa152";
 const JAMENDO_API = "https://api.jamendo.com/v3.0";
 
+
 /* =========================================================
-   APP STATE
+   DOM ELEMENTS
    ========================================================= */
 
-let songs = [];
+const audioPlayer = document.getElementById("audioPlayer");
+
+const libraryPage = document.getElementById("libraryPage");
+const onlinePage = document.getElementById("onlinePage");
+
+const pageTitle = document.getElementById("pageTitle");
+
+const libraryTracks = document.getElementById("libraryTracks");
+const onlineResults = document.getElementById("onlineResults");
+
+const onlineSearchInput =
+    document.getElementById("onlineSearchInput");
+
+const onlineSearchBtn =
+    document.getElementById("onlineSearchBtn");
+
+const onlineStatus =
+    document.getElementById("onlineStatus");
+
+const playBtn =
+    document.getElementById("playBtn");
+
+const previousBtn =
+    document.getElementById("previousBtn");
+
+const nextBtn =
+    document.getElementById("nextBtn");
+
+const shuffleBtn =
+    document.getElementById("shuffleBtn");
+
+const repeatBtn =
+    document.getElementById("repeatBtn");
+
+const progressBar =
+    document.getElementById("progressBar");
+
+const volumeControl =
+    document.getElementById("volumeControl");
+
+const playerTitle =
+    document.getElementById("playerTitle");
+
+const playerArtist =
+    document.getElementById("playerArtist");
+
+const playerArtwork =
+    document.getElementById("playerArtwork");
+
+const currentTime =
+    document.getElementById("currentTime");
+
+const totalTime =
+    document.getElementById("totalTime");
+
+const toast =
+    document.getElementById("toast");
+
+const navButtons =
+    document.querySelectorAll(".nav-btn");
+
+
+/* =========================================================
+   STATE
+   ========================================================= */
+
+let onlineSongs = [];
+
 let currentSongIndex = -1;
 
 let isPlaying = false;
 let isShuffle = false;
-let repeatMode = false;
+let isRepeat = false;
 
-const audio = document.getElementById("audio");
 
 /* =========================================================
-   JAMENDO API
+   TOAST
+   ========================================================= */
+
+function showToast(message) {
+
+    if (!toast) return;
+
+    toast.textContent = message;
+
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2500);
+}
+
+
+/* =========================================================
+   PAGE NAVIGATION
+   ========================================================= */
+
+navButtons.forEach(button => {
+
+    button.addEventListener("click", async () => {
+
+        const page = button.dataset.page;
+
+        navButtons.forEach(btn => {
+            btn.classList.remove("active");
+        });
+
+        button.classList.add("active");
+
+
+        if (page === "library") {
+
+            libraryPage.hidden = false;
+            onlinePage.hidden = true;
+
+            libraryPage.classList.add("active");
+            onlinePage.classList.remove("active");
+
+            pageTitle.textContent = "Your Library";
+
+        }
+
+
+        if (page === "online") {
+
+            libraryPage.hidden = true;
+            onlinePage.hidden = false;
+
+            libraryPage.classList.remove("active");
+            onlinePage.classList.add("active");
+
+            pageTitle.textContent = "Online Music";
+
+
+            /*
+             * Automatically load music when
+             * Online Music is opened.
+             */
+
+            if (onlineSongs.length === 0) {
+
+                await loadOnlineMusic();
+
+            }
+
+        }
+
+    });
+
+});
+
+
+/* =========================================================
+   JAMENDO API SEARCH
    ========================================================= */
 
 async function searchJamendo(query = "") {
+
     try {
+
         const params = new URLSearchParams();
 
-        params.set("client_id", JAMENDO_CLIENT_ID);
-        params.set("format", "json");
-        params.set("limit", "30");
+        params.set(
+            "client_id",
+            JAMENDO_CLIENT_ID
+        );
 
-        // Good-quality MP3
-        params.set("audioformat", "mp32");
-        params.set("audiodlformat", "mp32");
+        params.set(
+            "format",
+            "json"
+        );
 
-        // Include both album tracks and singles
-        params.set("type", "albumtrack");
+        params.set(
+            "limit",
+            "30"
+        );
 
-        // Larger artwork
-        params.set("imagesize", "500");
+        params.set(
+            "audioformat",
+            "mp32"
+        );
 
-        // Search by song name
+        params.set(
+            "audiodlformat",
+            "mp32"
+        );
+
+        params.set(
+            "imagesize",
+            "500"
+        );
+
+
+        /*
+         * Use Jamendo's general search.
+         * This searches song, artist, album
+         * and tags.
+         */
+
         if (query.trim()) {
-            params.set("namesearch", query.trim());
+
+            params.set(
+                "search",
+                query.trim()
+            );
+
         }
 
-        const url = `${JAMENDO_API}/tracks/?${params.toString()}`;
 
-        console.log("Jamendo request:", url);
+        const url =
+            `${JAMENDO_API}/tracks/?${params.toString()}`;
 
-        const response = await fetch(url);
+
+        console.log(
+            "Jamendo API:",
+            url
+        );
+
+
+        const response =
+            await fetch(url);
+
 
         if (!response.ok) {
-            throw new Error(`Jamendo API error: ${response.status}`);
-        }
 
-        const data = await response.json();
-
-        if (data.headers && data.headers.status !== "success") {
             throw new Error(
-                data.headers.error_message || "Jamendo API request failed"
+                `API Error: ${response.status}`
             );
+
         }
+
+
+        const data =
+            await response.json();
+
+
+        console.log(
+            "Jamendo response:",
+            data
+        );
+
+
+        if (
+            data.headers &&
+            data.headers.status !== "success"
+        ) {
+
+            throw new Error(
+                data.headers.error_message ||
+                "Jamendo request failed"
+            );
+
+        }
+
 
         return data.results || [];
 
-    } catch (error) {
-        console.error("Jamendo API Error:", error);
-
-        showMessage(
-            "Unable to connect to Jamendo. Check your internet connection."
-        );
-
-        return [];
-    }
-}
-
-/* =========================================================
-   CONVERT JAMENDO TRACK
-   ========================================================= */
-
-function formatJamendoSong(track) {
-    return {
-        id: `jamendo-${track.id}`,
-        jamendoId: track.id,
-
-        title: track.name || "Unknown Track",
-
-        artist: track.artist_name || "Unknown Artist",
-
-        album: track.album_name || "Single",
-
-        artwork:
-            track.album_image ||
-            track.image ||
-            "https://via.placeholder.com/500",
-
-        image:
-            track.album_image ||
-            track.image ||
-            "https://via.placeholder.com/500",
-
-        duration: Number(track.duration) || 0,
-
-        // FULL STREAM URL
-        audio: track.audio,
-
-        // DOWNLOAD URL
-        downloadUrl: track.audiodownload,
-
-        downloadAllowed:
-            track.audiodownload_allowed === true,
-
-        source: "Jamendo"
-    };
-}
-
-/* =========================================================
-   LOAD MUSIC FROM JAMENDO
-   ========================================================= */
-
-async function loadJamendoMusic(query = "") {
-
-    showMessage("Loading music...");
-
-    const results = await searchJamendo(query);
-
-    songs = results.map(formatJamendoSong);
-
-    renderSongs(songs);
-
-    if (songs.length === 0) {
-        showMessage("No music found.");
-    }
-
-    console.log("Jamendo songs:", songs);
-}
-
-/* =========================================================
-   SEARCH
-   ========================================================= */
-
-async function searchMusic(query) {
-
-    query = query.trim();
-
-    if (!query) {
-        await loadJamendoMusic();
-        return;
-    }
-
-    await loadJamendoMusic(query);
-}
-
-/* =========================================================
-   PLAY SONG
-   ========================================================= */
-
-function playSong(index) {
-
-    if (!songs[index]) return;
-
-    currentSongIndex = index;
-
-    const song = songs[index];
-
-    /*
-       IMPORTANT:
-       This uses Jamendo's FULL audio stream,
-       NOT a 30-second preview.
-    */
-
-    if (!song.audio) {
-        showMessage("This track cannot be streamed.");
-        return;
-    }
-
-    audio.src = song.audio;
-
-    audio.load();
-
-    audio.play()
-        .then(() => {
-            isPlaying = true;
-            updatePlayer(song);
-            updatePlayButton();
-        })
-        .catch(error => {
-            console.error("Playback error:", error);
-
-            showMessage(
-                "Unable to play this track."
-            );
-        });
-}
-
-/* =========================================================
-   PLAY / PAUSE
-   ========================================================= */
-
-function togglePlay() {
-
-    if (!audio.src) {
-
-        if (songs.length > 0) {
-            playSong(0);
-        }
-
-        return;
-    }
-
-    if (audio.paused) {
-
-        audio.play()
-            .then(() => {
-
-                isPlaying = true;
-
-                updatePlayButton();
-
-            })
-            .catch(error => {
-                console.error(error);
-            });
-
-    } else {
-
-        audio.pause();
-
-        isPlaying = false;
-
-        updatePlayButton();
-    }
-}
-
-/* =========================================================
-   NEXT SONG
-   ========================================================= */
-
-function nextSong() {
-
-    if (songs.length === 0) return;
-
-    let nextIndex;
-
-    if (isShuffle) {
-
-        nextIndex =
-            Math.floor(Math.random() * songs.length);
-
-        while (
-            songs.length > 1 &&
-            nextIndex === currentSongIndex
-        ) {
-            nextIndex =
-                Math.floor(Math.random() * songs.length);
-        }
-
-    } else {
-
-        nextIndex =
-            currentSongIndex + 1;
-
-        if (nextIndex >= songs.length) {
-            nextIndex = 0;
-        }
-    }
-
-    playSong(nextIndex);
-}
-
-/* =========================================================
-   PREVIOUS SONG
-   ========================================================= */
-
-function previousSong() {
-
-    if (songs.length === 0) return;
-
-    let previousIndex =
-        currentSongIndex - 1;
-
-    if (previousIndex < 0) {
-        previousIndex = songs.length - 1;
-    }
-
-    playSong(previousIndex);
-}
-
-/* =========================================================
-   SHUFFLE
-   ========================================================= */
-
-function toggleShuffle() {
-
-    isShuffle = !isShuffle;
-
-    const shuffleButton =
-        document.getElementById("shuffleBtn");
-
-    if (shuffleButton) {
-        shuffleButton.classList.toggle(
-            "active",
-            isShuffle
-        );
-    }
-}
-
-/* =========================================================
-   REPEAT
-   ========================================================= */
-
-function toggleRepeat() {
-
-    repeatMode = !repeatMode;
-
-    const repeatButton =
-        document.getElementById("repeatBtn");
-
-    if (repeatButton) {
-        repeatButton.classList.toggle(
-            "active",
-            repeatMode
-        );
-    }
-}
-
-/* =========================================================
-   AUDIO ENDED
-   ========================================================= */
-
-audio.addEventListener("ended", () => {
-
-    if (repeatMode) {
-
-        audio.currentTime = 0;
-        audio.play();
-
-        return;
-    }
-
-    nextSong();
-});
-
-/* =========================================================
-   PLAYER UI
-   ========================================================= */
-
-function updatePlayer(song) {
-
-    const titleElements = [
-        document.getElementById("playerTitle"),
-        document.getElementById("currentTitle")
-    ];
-
-    titleElements.forEach(element => {
-
-        if (element) {
-            element.textContent = song.title;
-        }
-
-    });
-
-    const artistElements = [
-        document.getElementById("playerArtist"),
-        document.getElementById("currentArtist")
-    ];
-
-    artistElements.forEach(element => {
-
-        if (element) {
-            element.textContent = song.artist;
-        }
-
-    });
-
-    const imageElements = [
-        document.getElementById("playerImage"),
-        document.getElementById("currentImage")
-    ];
-
-    imageElements.forEach(element => {
-
-        if (element) {
-            element.src = song.artwork;
-        }
-
-    });
-}
-
-/* =========================================================
-   PLAY BUTTON UI
-   ========================================================= */
-
-function updatePlayButton() {
-
-    const buttons = [
-        document.getElementById("playBtn"),
-        document.getElementById("playPauseBtn")
-    ];
-
-    buttons.forEach(button => {
-
-        if (!button) return;
-
-        button.textContent =
-            isPlaying ? "❚❚" : "▶";
-
-    });
-}
-
-/* =========================================================
-   PROGRESS BAR
-   ========================================================= */
-
-audio.addEventListener("timeupdate", () => {
-
-    const progress =
-        document.getElementById("progress");
-
-    if (!progress) return;
-
-    if (audio.duration) {
-
-        progress.value =
-            (audio.currentTime / audio.duration) * 100;
-    }
-
-    updateTime();
-});
-
-/* =========================================================
-   SEEK
-   ========================================================= */
-
-function seekAudio(value) {
-
-    if (!audio.duration) return;
-
-    audio.currentTime =
-        (value / 100) * audio.duration;
-}
-
-/* =========================================================
-   TIME DISPLAY
-   ========================================================= */
-
-function formatTime(seconds) {
-
-    if (!seconds || isNaN(seconds)) {
-        return "0:00";
-    }
-
-    const minutes =
-        Math.floor(seconds / 60);
-
-    const remainingSeconds =
-        Math.floor(seconds % 60);
-
-    return `${minutes}:${String(
-        remainingSeconds
-    ).padStart(2, "0")}`;
-}
-
-function updateTime() {
-
-    const currentTime =
-        document.getElementById("currentTime");
-
-    const duration =
-        document.getElementById("duration");
-
-    if (currentTime) {
-        currentTime.textContent =
-            formatTime(audio.currentTime);
-    }
-
-    if (duration) {
-        duration.textContent =
-            formatTime(audio.duration);
-    }
-}
-
-/* =========================================================
-   VOLUME
-   ========================================================= */
-
-function setVolume(value) {
-
-    audio.volume =
-        Number(value) / 100;
-}
-
-/* =========================================================
-   DOWNLOAD SONG
-   ========================================================= */
-
-async function downloadSong(index) {
-
-    const song = songs[index];
-
-    if (!song) return;
-
-    if (!song.downloadAllowed || !song.downloadUrl) {
-
-        showMessage(
-            "Downloads are not available for this track."
-        );
-
-        return;
-    }
-
-    try {
-
-        const response =
-            await fetch(song.downloadUrl);
-
-        if (!response.ok) {
-            throw new Error(
-                `Download failed: ${response.status}`
-            );
-        }
-
-        const blob =
-            await response.blob();
-
-        const url =
-            URL.createObjectURL(blob);
-
-        const link =
-            document.createElement("a");
-
-        link.href = url;
-
-        link.download =
-            `${song.artist} - ${song.title}.mp3`;
-
-        document.body.appendChild(link);
-
-        link.click();
-
-        link.remove();
-
-        URL.revokeObjectURL(url);
-
-        showMessage("Download started.");
 
     } catch (error) {
 
         console.error(
-            "Download error:",
+            "Jamendo Error:",
             error
         );
 
-        /*
-           Fallback: let the browser open
-           Jamendo's download URL directly.
-        */
 
-        const link =
-            document.createElement("a");
+        onlineStatus.textContent =
+            "Unable to load music. Check your internet connection.";
 
-        link.href =
-            song.downloadUrl;
 
-        link.target = "_blank";
-
-        link.rel = "noopener";
-
-        document.body.appendChild(link);
-
-        link.click();
-
-        link.remove();
-    }
-}
-
-/* =========================================================
-   RENDER SONGS
-   ========================================================= */
-
-function renderSongs(songList) {
-
-    /*
-       CHANGE THIS ID if your existing
-       music container has another ID.
-    */
-
-    const container =
-        document.getElementById("songGrid") ||
-        document.getElementById("musicGrid") ||
-        document.getElementById("songsContainer");
-
-    if (!container) {
-
-        console.warn(
-            "Song container not found."
+        showToast(
+            "Could not connect to Jamendo."
         );
 
-        return;
+
+        return [];
+
     }
 
-    container.innerHTML = "";
+}
 
-    songList.forEach((song, index) => {
+
+/* =========================================================
+   FORMAT JAMENDO SONG
+   ========================================================= */
+
+function formatSong(track) {
+
+    return {
+
+        id: track.id,
+
+        title:
+            track.name ||
+            "Unknown Song",
+
+        artist:
+            track.artist_name ||
+            "Unknown Artist",
+
+        album:
+            track.album_name ||
+            "Single",
+
+        artwork:
+            track.image ||
+            track.album_image ||
+            "",
+
+        duration:
+            Number(track.duration) || 0,
+
+        /*
+         * THIS IS THE FULL JAMENDO
+         * STREAM URL.
+         */
+
+        audio:
+            track.audio || "",
+
+        /*
+         * DOWNLOAD URL
+         */
+
+        downloadUrl:
+            track.audiodownload || "",
+
+        /*
+         * Jamendo tells us whether
+         * downloading is allowed.
+         */
+
+        downloadAllowed:
+            track.audiodownload_allowed === true
+
+    };
+
+}
+
+
+/* =========================================================
+   LOAD ONLINE MUSIC
+   ========================================================= */
+
+async function loadOnlineMusic(query = "") {
+
+    onlineStatus.textContent =
+        "Loading music...";
+
+
+    onlineResults.innerHTML = "";
+
+
+    const results =
+        await searchJamendo(query);
+
+
+    onlineSongs =
+        results.map(formatSong);
+
+
+    if (onlineSongs.length === 0) {
+
+        onlineStatus.textContent =
+            "No music found.";
+
+        return;
+
+    }
+
+
+    onlineStatus.textContent =
+        `${onlineSongs.length} tracks found`;
+
+
+    renderOnlineSongs();
+
+}
+
+
+/* =========================================================
+   RENDER ONLINE SONGS
+   ========================================================= */
+
+function renderOnlineSongs() {
+
+    onlineResults.innerHTML = "";
+
+
+    onlineSongs.forEach((song, index) => {
 
         const card =
-            document.createElement("div");
+            document.createElement("article");
 
-        card.className = "song-card";
+
+        card.className =
+            "track-card";
+
 
         card.innerHTML = `
-            <div class="song-image-wrapper">
 
-                <img
-                    class="song-image"
-                    src="${escapeHTML(song.artwork)}"
-                    alt="${escapeHTML(song.title)}"
-                >
+            <div class="track-artwork">
+
+                ${
+                    song.artwork
+                    ?
+                    `<img
+                        src="${escapeHTML(song.artwork)}"
+                        alt="${escapeHTML(song.title)}"
+                    >`
+                    :
+                    `<span>♫</span>`
+                }
 
                 <button
-                    class="song-play-btn"
-                    onclick="playSong(${index})"
+                    class="track-play"
+                    data-index="${index}"
+                    title="Play"
                 >
                     ▶
                 </button>
 
             </div>
 
-            <div class="song-info">
+
+            <div class="track-details">
 
                 <h3>
                     ${escapeHTML(song.title)}
@@ -638,35 +451,730 @@ function renderSongs(songList) {
                     ${escapeHTML(song.artist)}
                 </p>
 
+                <small>
+                    ${escapeHTML(song.album)}
+                </small>
+
             </div>
 
-            <div class="song-actions">
+
+            <div class="track-actions">
 
                 <button
-                    onclick="playSong(${index})"
+                    class="play-online-btn"
+                    data-index="${index}"
                     title="Play"
                 >
                     ▶
                 </button>
 
                 <button
-                    onclick="downloadSong(${index})"
+                    class="download-online-btn"
+                    data-index="${index}"
                     title="Download"
                     ${
-                        !song.downloadAllowed
-                            ? "disabled"
-                            : ""
+                        song.downloadAllowed
+                        ? ""
+                        : "disabled"
                     }
                 >
                     ↓
                 </button>
 
             </div>
+
         `;
 
-        container.appendChild(card);
+
+        onlineResults.appendChild(card);
+
     });
+
+
+    /*
+     * PLAY BUTTONS
+     */
+
+    onlineResults
+        .querySelectorAll(".track-play")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    playSong(
+                        Number(button.dataset.index)
+                    );
+
+                }
+            );
+
+        });
+
+
+    onlineResults
+        .querySelectorAll(".play-online-btn")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    playSong(
+                        Number(button.dataset.index)
+                    );
+
+                }
+            );
+
+        });
+
+
+    /*
+     * DOWNLOAD BUTTONS
+     */
+
+    onlineResults
+        .querySelectorAll(
+            ".download-online-btn"
+        )
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    downloadSong(
+                        Number(button.dataset.index)
+                    );
+
+                }
+            );
+
+        });
+
 }
+
+
+/* =========================================================
+   SEARCH BUTTON
+   ========================================================= */
+
+onlineSearchBtn.addEventListener(
+    "click",
+    async () => {
+
+        const query =
+            onlineSearchInput.value.trim();
+
+
+        await loadOnlineMusic(query);
+
+    }
+);
+
+
+/* =========================================================
+   SEARCH WITH ENTER
+   ========================================================= */
+
+onlineSearchInput.addEventListener(
+    "keydown",
+    async event => {
+
+        if (event.key === "Enter") {
+
+            event.preventDefault();
+
+            const query =
+                onlineSearchInput.value.trim();
+
+
+            await loadOnlineMusic(query);
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   PLAY SONG
+   ========================================================= */
+
+function playSong(index) {
+
+    if (!onlineSongs[index]) return;
+
+
+    const song =
+        onlineSongs[index];
+
+
+    if (!song.audio) {
+
+        showToast(
+            "This track cannot be streamed."
+        );
+
+        return;
+
+    }
+
+
+    currentSongIndex =
+        index;
+
+
+    /*
+     * USE JAMENDO FULL STREAM
+     */
+
+    audioPlayer.src =
+        song.audio;
+
+
+    audioPlayer.load();
+
+
+    audioPlayer.play()
+        .then(() => {
+
+            isPlaying = true;
+
+            updatePlayer(song);
+
+            updatePlayButton();
+
+        })
+        .catch(error => {
+
+            console.error(
+                "Playback error:",
+                error
+            );
+
+            showToast(
+                "Unable to play this song."
+            );
+
+        });
+
+}
+
+
+/* =========================================================
+   UPDATE PLAYER
+   ========================================================= */
+
+function updatePlayer(song) {
+
+    playerTitle.textContent =
+        song.title;
+
+
+    playerArtist.textContent =
+        song.artist;
+
+
+    if (song.artwork) {
+
+        playerArtwork.innerHTML = `
+
+            <img
+                src="${escapeHTML(song.artwork)}"
+                alt="${escapeHTML(song.title)}"
+            >
+
+        `;
+
+    } else {
+
+        playerArtwork.innerHTML =
+            "<span>♫</span>";
+
+    }
+
+}
+
+
+/* =========================================================
+   PLAY / PAUSE
+   ========================================================= */
+
+playBtn.addEventListener(
+    "click",
+    () => {
+
+        if (!audioPlayer.src) {
+
+            if (onlineSongs.length > 0) {
+
+                playSong(0);
+
+            }
+
+            return;
+
+        }
+
+
+        if (audioPlayer.paused) {
+
+            audioPlayer.play();
+
+        } else {
+
+            audioPlayer.pause();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   AUDIO PLAY
+   ========================================================= */
+
+audioPlayer.addEventListener(
+    "play",
+    () => {
+
+        isPlaying = true;
+
+        updatePlayButton();
+
+    }
+);
+
+
+/* =========================================================
+   AUDIO PAUSE
+   ========================================================= */
+
+audioPlayer.addEventListener(
+    "pause",
+    () => {
+
+        isPlaying = false;
+
+        updatePlayButton();
+
+    }
+);
+
+
+/* =========================================================
+   UPDATE PLAY BUTTON
+   ========================================================= */
+
+function updatePlayButton() {
+
+    playBtn.textContent =
+        isPlaying
+        ? "⏸️"
+        : "▶️";
+
+}
+
+
+/* =========================================================
+   NEXT SONG
+   ========================================================= */
+
+nextBtn.addEventListener(
+    "click",
+    () => {
+
+        if (onlineSongs.length === 0)
+            return;
+
+
+        let nextIndex;
+
+
+        if (isShuffle) {
+
+            nextIndex =
+                Math.floor(
+                    Math.random() *
+                    onlineSongs.length
+                );
+
+        } else {
+
+            nextIndex =
+                currentSongIndex + 1;
+
+
+            if (
+                nextIndex >=
+                onlineSongs.length
+            ) {
+
+                nextIndex = 0;
+
+            }
+
+        }
+
+
+        playSong(nextIndex);
+
+    }
+);
+
+
+/* =========================================================
+   PREVIOUS SONG
+   ========================================================= */
+
+previousBtn.addEventListener(
+    "click",
+    () => {
+
+        if (onlineSongs.length === 0)
+            return;
+
+
+        let previousIndex =
+            currentSongIndex - 1;
+
+
+        if (previousIndex < 0) {
+
+            previousIndex =
+                onlineSongs.length - 1;
+
+        }
+
+
+        playSong(previousIndex);
+
+    }
+);
+
+
+/* =========================================================
+   SHUFFLE
+   ========================================================= */
+
+shuffleBtn.addEventListener(
+    "click",
+    () => {
+
+        isShuffle =
+            !isShuffle;
+
+
+        shuffleBtn.classList.toggle(
+            "active",
+            isShuffle
+        );
+
+
+        showToast(
+            isShuffle
+            ? "Shuffle enabled"
+            : "Shuffle disabled"
+        );
+
+    }
+);
+
+
+/* =========================================================
+   REPEAT
+   ========================================================= */
+
+repeatBtn.addEventListener(
+    "click",
+    () => {
+
+        isRepeat =
+            !isRepeat;
+
+
+        repeatBtn.classList.toggle(
+            "active",
+            isRepeat
+        );
+
+
+        showToast(
+            isRepeat
+            ? "Repeat enabled"
+            : "Repeat disabled"
+        );
+
+    }
+);
+
+
+/* =========================================================
+   WHEN SONG ENDS
+   ========================================================= */
+
+audioPlayer.addEventListener(
+    "ended",
+    () => {
+
+        if (isRepeat) {
+
+            audioPlayer.currentTime = 0;
+
+            audioPlayer.play();
+
+            return;
+
+        }
+
+
+        if (onlineSongs.length > 0) {
+
+            let nextIndex =
+                currentSongIndex + 1;
+
+
+            if (
+                nextIndex >=
+                onlineSongs.length
+            ) {
+
+                nextIndex = 0;
+
+            }
+
+
+            playSong(nextIndex);
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   PROGRESS BAR
+   ========================================================= */
+
+audioPlayer.addEventListener(
+    "timeupdate",
+    () => {
+
+        if (!audioPlayer.duration)
+            return;
+
+
+        const percentage =
+            (
+                audioPlayer.currentTime /
+                audioPlayer.duration
+            ) * 100;
+
+
+        progressBar.value =
+            percentage;
+
+
+        currentTime.textContent =
+            formatTime(
+                audioPlayer.currentTime
+            );
+
+    }
+);
+
+
+/* =========================================================
+   AUDIO METADATA
+   ========================================================= */
+
+audioPlayer.addEventListener(
+    "loadedmetadata",
+    () => {
+
+        totalTime.textContent =
+            formatTime(
+                audioPlayer.duration
+            );
+
+    }
+);
+
+
+/* =========================================================
+   SEEK
+   ========================================================= */
+
+progressBar.addEventListener(
+    "input",
+    () => {
+
+        if (!audioPlayer.duration)
+            return;
+
+
+        audioPlayer.currentTime =
+            (
+                Number(progressBar.value) /
+                100
+            ) *
+            audioPlayer.duration;
+
+    }
+);
+
+
+/* =========================================================
+   VOLUME
+   ========================================================= */
+
+volumeControl.addEventListener(
+    "input",
+    () => {
+
+        audioPlayer.volume =
+            Number(volumeControl.value);
+
+    }
+);
+
+
+/* =========================================================
+   DOWNLOAD
+   ========================================================= */
+
+async function downloadSong(index) {
+
+    const song =
+        onlineSongs[index];
+
+
+    if (!song) return;
+
+
+    if (
+        !song.downloadAllowed ||
+        !song.downloadUrl
+    ) {
+
+        showToast(
+            "Download isn't available for this track."
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                song.downloadUrl
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Download failed"
+            );
+
+        }
+
+
+        const blob =
+            await response.blob();
+
+
+        const url =
+            URL.createObjectURL(blob);
+
+
+        const link =
+            document.createElement("a");
+
+
+        link.href = url;
+
+
+        link.download =
+            `${song.artist} - ${song.title}.mp3`;
+
+
+        document.body.appendChild(link);
+
+
+        link.click();
+
+
+        link.remove();
+
+
+        URL.revokeObjectURL(url);
+
+
+        showToast(
+            "Download started."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Download error:",
+            error
+        );
+
+
+        /*
+         * Direct fallback
+         */
+
+        window.open(
+            song.downloadUrl,
+            "_blank"
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   TIME FORMAT
+   ========================================================= */
+
+function formatTime(seconds) {
+
+    if (
+        !seconds ||
+        isNaN(seconds)
+    ) {
+
+        return "0:00";
+
+    }
+
+
+    const minutes =
+        Math.floor(seconds / 60);
+
+
+    const remainingSeconds =
+        Math.floor(seconds % 60);
+
+
+    return `${minutes}:${String(
+        remainingSeconds
+    ).padStart(2, "0")}`;
+
+}
+
 
 /* =========================================================
    ESCAPE HTML
@@ -680,232 +1188,46 @@ function escapeHTML(value) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+
 }
+
 
 /* =========================================================
-   MESSAGE
+   LIBRARY PLACEHOLDER
    ========================================================= */
 
-function showMessage(message) {
+function showLibrary() {
 
-    console.log(message);
+    /*
+     * Your existing local-library functionality
+     * can remain here.
+     */
 
-    const messageElement =
-        document.getElementById("message");
+    console.log(
+        "Library opened."
+    );
 
-    if (messageElement) {
-
-        messageElement.textContent =
-            message;
-
-        messageElement.style.display =
-            "block";
-
-        setTimeout(() => {
-
-            messageElement.style.display =
-                "none";
-
-        }, 3000);
-    }
 }
+
 
 /* =========================================================
-   SEARCH FORM
+   INITIALIZE
    ========================================================= */
 
-const searchForm =
-    document.getElementById("searchForm");
+audioPlayer.volume = 1;
 
-if (searchForm) {
+progressBar.value = 0;
 
-    searchForm.addEventListener(
-        "submit",
-        async event => {
 
-            event.preventDefault();
+/*
+ * Make sure the Library page
+ * is displayed when the app starts.
+ */
 
-            const input =
-                document.getElementById("searchInput");
+libraryPage.hidden = false;
+onlinePage.hidden = true;
 
-            if (!input) return;
 
-            await searchMusic(input.value);
-        }
-    );
-}
-
-/* =========================================================
-   SEARCH INPUT — OPTIONAL LIVE SEARCH
-   ========================================================= */
-
-const searchInput =
-    document.getElementById("searchInput");
-
-if (searchInput) {
-
-    searchInput.addEventListener(
-        "keydown",
-        event => {
-
-            if (event.key === "Enter") {
-
-                event.preventDefault();
-
-                searchMusic(
-                    searchInput.value
-                );
-            }
-        }
-    );
-}
-
-/* =========================================================
-   CONNECT PLAYER BUTTONS
-   ========================================================= */
-
-const playBtn =
-    document.getElementById("playBtn");
-
-if (playBtn) {
-
-    playBtn.addEventListener(
-        "click",
-        togglePlay
-    );
-}
-
-const playPauseBtn =
-    document.getElementById("playPauseBtn");
-
-if (playPauseBtn) {
-
-    playPauseBtn.addEventListener(
-        "click",
-        togglePlay
-    );
-}
-
-const nextBtn =
-    document.getElementById("nextBtn");
-
-if (nextBtn) {
-
-    nextBtn.addEventListener(
-        "click",
-        nextSong
-    );
-}
-
-const previousBtn =
-    document.getElementById("previousBtn");
-
-if (previousBtn) {
-
-    previousBtn.addEventListener(
-        "click",
-        previousSong
-    );
-}
-
-const shuffleBtn =
-    document.getElementById("shuffleBtn");
-
-if (shuffleBtn) {
-
-    shuffleBtn.addEventListener(
-        "click",
-        toggleShuffle
-    );
-}
-
-const repeatBtn =
-    document.getElementById("repeatBtn");
-
-if (repeatBtn) {
-
-    repeatBtn.addEventListener(
-        "click",
-        toggleRepeat
-    );
-}
-
-/* =========================================================
-   PROGRESS INPUT
-   ========================================================= */
-
-const progress =
-    document.getElementById("progress");
-
-if (progress) {
-
-    progress.addEventListener(
-        "input",
-        event => {
-
-            seekAudio(
-                event.target.value
-            );
-        }
-    );
-}
-
-/* =========================================================
-   VOLUME INPUT
-   ========================================================= */
-
-const volume =
-    document.getElementById("volume");
-
-if (volume) {
-
-    volume.addEventListener(
-        "input",
-        event => {
-
-            setVolume(
-                event.target.value
-            );
-        }
-    );
-}
-
-/* =========================================================
-   AUDIO EVENTS
-   ========================================================= */
-
-audio.addEventListener("play", () => {
-
-    isPlaying = true;
-
-    updatePlayButton();
-});
-
-audio.addEventListener("pause", () => {
-
-    isPlaying = false;
-
-    updatePlayButton();
-});
-
-/* =========================================================
-   START TONEARM
-   ========================================================= */
-
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
-
-        console.log(
-            "TONEARM + Jamendo API initialized."
-        );
-
-        /*
-           Load music automatically.
-           Remove this line if you want the
-           library to start completely empty.
-        */
-
-        await loadJamendoMusic();
-    }
+console.log(
+    "TONEARM initialized successfully."
 );
